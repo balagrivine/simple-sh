@@ -11,12 +11,13 @@ main(int argc, char *argv[])
     char command[256];
 
     while (1){
-        fputs("$", stdout);
+        fputs("simple-sh$ ", stdout);
         fflush(stdout);
 
         if (fgets(command, sizeof(command), stdin) == NULL) {
             break;
         }
+
         command[strlen(command) - 1] = '\0';
 
         if (strcmp(command, "exit") == 0) {
