@@ -1,0 +1,6 @@
+-std=c99
+-Wall
+-Wextra
+-isysroot
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+-I/opt/homebrew/opt/readline/include

@@ -3,22 +3,36 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <setjmp.h>
 #include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#define GREEN "\001\033[32m\002"
+#define RESET "\001\033[0m\002"
+
 int tokenize(char *command, char **tokens);
 void register_interrupt_signal_handler(void);
 void sigint_handler(int sig);
+void execute_readline_command(char *command);
+static sigjmp_buf sigint_env;
 
 int
 main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     register_interrupt_signal_handler();
+    rl_bind_key('\t', rl_complete);
 
     while (1){
 
-        char *command = readline("simple-shell$ ");
+        if (sigsetjmp(sigint_env, 1) != 0) {
+            write(STDOUT_FILENO, "\n", 1);
+        }
+
+        char *command = readline(GREEN "simple-sh$ " RESET);
         if (command == NULL) {
             break;
         }
@@ -32,38 +46,42 @@ main(int argc, char *argv[])
             add_history(command);
         }
 
-        int rc = fork();
-        if (rc < 0) {
-            perror("fork");
-            exit(1);
-        } else if (rc == 0) {
-            // Reset the signal disposition in the child process.
-            // From the signal man page -> https://man7.org/linux/man-pages/man7/signal.7.html,
-            // the dispositions of handled signals are reset to the default;
-            // the dispositions of ignored signals are left unchanged. Since we ignore `SIGINT`
-            // signals, the child process will inherit that and cause issues later on.
-            signal(SIGINT, SIG_DFL);
-
-            char *tokens[100];
-
-            int num_tokens = tokenize(command, tokens);
-            if (num_tokens == 0) {
-                exit(0);
-            }
-
-            int ret = execvp(tokens[0], tokens);
-            if (ret == -1) {
-                perror(tokens[0]);
-            }
-            exit(ret);
-        } else {
-            wait(NULL);
-        }
+        execute_readline_command(command);
 
         free(command);
     }
 
     return 0;
+}
+
+void execute_readline_command(char *command){
+    int rc = fork();
+    if (rc < 0) {
+        perror("fork");
+        exit(1);
+    } else if (rc == 0) {
+        // Reset the signal disposition in the child process.
+        // From the signal man page -> https://man7.org/linux/man-pages/man7/signal.7.html,
+        // the dispositions of handled signals are reset to the default;
+        // the dispositions of ignored signals are left unchanged. Since we ignore `SIGINT`
+        // signals, the child process will inherit that and cause issues later on.
+        signal(SIGINT, SIG_DFL);
+
+        char *tokens[100];
+
+        int num_tokens = tokenize(command, tokens);
+        if (num_tokens == 0) {
+            exit(0);
+        }
+
+        int ret = execvp(tokens[0], tokens);
+        if (ret == -1) {
+            perror(tokens[0]);
+        }
+        exit(ret);
+    } else {
+        wait(NULL);
+    }
 }
 
 int
@@ -94,5 +112,7 @@ register_interrupt_signal_handler(void){
 
 void
 sigint_handler(int sig){
-    putchar('\n');
+    (void)sig;
+    rl_free_line_state();
+    siglongjmp(sigint_env, 1);
 }
