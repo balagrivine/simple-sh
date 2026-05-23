@@ -8,8 +8,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#define GREEN "\001\033[32m\002"
-#define RESET "\001\033[0m\002"
+#include "builtin.h"
+#include "prompt.h"
 
 int tokenize(char *command, char **tokens);
 void register_interrupt_signal_handler(void);
@@ -32,7 +32,7 @@ main(int argc, char *argv[])
             write(STDOUT_FILENO, "\n", 1);
         }
 
-        char *command = readline(GREEN "simple-sh$ " RESET);
+        char *command = readline(prompt());
         if (command == NULL) {
             break;
         }
@@ -55,6 +55,8 @@ main(int argc, char *argv[])
 }
 
 void execute_readline_command(char *command){
+    if (handle_builtin(command) == 0) return;
+
     int rc = fork();
     if (rc < 0) {
         perror("fork");
