@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/wait.h>
+#include <ctype.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -95,15 +96,49 @@ void execute_readline_command(char *command){
 }
 
 int
-tokenize(char *command, char ** tokens)
+tokenize(char *command, char **tokens)
 {
     int i = 0;
-    char *token = strtok(command, " ");
-    while (token != NULL) {
-        tokens[i++] = token;
-        token = strtok(NULL, " ");
+    char *p = command;
+
+    while (*p) {
+        while (isspace((unsigned char)*p)) {
+            p++;
+        }
+
+        if (*p == '\0') {
+            break;
+        }
+
+        if (*p == '"') {
+            p++;
+
+            tokens[i++] = p;
+
+            while (*p && *p != '"') {
+                p++;
+            }
+
+            if (*p == '"') {
+                *p = '\0';
+                p++;
+            }
+        } else {
+            tokens[i++] = p;
+
+            while (*p && !isspace((unsigned char)*p)) {
+                p++;
+            }
+
+            if (*p) {
+                *p = '\0';
+                p++;
+            }
+        }
     }
+
     tokens[i] = NULL;
+
     return i;
 }
 
