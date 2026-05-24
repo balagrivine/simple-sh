@@ -16,12 +16,18 @@ void register_interrupt_signal_handler(void);
 void sigint_handler(int sig);
 void execute_readline_command(char *command);
 static sigjmp_buf sigint_env;
+int initialize_shell();
 
 int
 main(int argc, char *argv[])
 {
     (void)argc;
     (void)argv;
+
+    if (initialize_shell() != 0){
+        perror("failed to initialize shell");
+        exit(1);
+    }
 
     register_interrupt_signal_handler();
     rl_bind_key('\t', rl_complete);
@@ -117,4 +123,8 @@ sigint_handler(int sig){
     (void)sig;
     rl_free_line_state();
     siglongjmp(sigint_env, 1);
+}
+
+int initialize_shell(void){
+    return setenv("CLICOLOR", "1", 0);
 }
