@@ -61,7 +61,9 @@ main(int argc, char *argv[])
 }
 
 void execute_readline_command(char *command){
-    if (handle_builtin(command) == 0) return;
+    if (handle_builtin(command) == 0){
+        return;
+    }
 
     int rc = fork();
     if (rc < 0) {
