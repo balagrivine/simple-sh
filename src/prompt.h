@@ -6,7 +6,10 @@
 #include <string.h>
 
 #define GREEN "\001\033[32m\002"
+#define GOLD "\e[38;2;211;175;55m"
 #define RESET "\001\033[0m\002"
+#define START_BOLD "\033[1m"
+#define END_BOLD "\033[0m"
 
 char *prompt(void) {
     static char prompt[1024];
@@ -26,11 +29,14 @@ char *prompt(void) {
         snprintf(
             prompt,
             sizeof(prompt),
-            "%s%s@%s ~%s $ %s",
-            GREEN,
+            "%s%s%s@%s%s ~%s $ %s%s",
+            GOLD,
+            START_BOLD,
             username,
             hostname,
+            GREEN,
             cwd + strlen(home),
+            END_BOLD,
             RESET
         );
     }
