@@ -10,10 +10,12 @@ int handle_builtin(char *command){
 
     if (strncmp(command, "cd ", 3) == 0) {
         return handle_chdir_builtin(command);
-    } else if (strncmp(command, "export ", 3) == 0) {
+    } else if (strncmp(command, "export ", 7) == 0) {
         return handle_export_builtin(command);
-    } else if (strncmp(command, "echo ", 3) == 0) {
+    } else if (strncmp(command, "echo ", 5) == 0) {
         return handle_echo_builtin(command);
+    }else if (strncmp(command, "source ", 7) == 0) {
+        return handle_source_builtin(command);
     }
 
     return -1;
@@ -72,6 +74,41 @@ int handle_echo_builtin(char *command) {
 
     char *value =  getenv(key);
     printf("%s\n", value);
+
+    return 0;
+}
+
+int handle_source_builtin(char *command)
+{
+    if (!command) {
+        return -1;
+    }
+
+    char *filename = command + strlen("source ");
+
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        perror("source");
+        return -1;
+    }
+
+    char *line = NULL;
+    size_t len = 0;
+
+    while (getline(&line, &len, fp) != -1) {
+        line[strcspn(line, "\n")] = '\0';
+
+        if (strlen(line) == 0) {
+            continue;
+        }
+
+        if (strncmp(line, "export ", 7) == 0) {
+            handle_export_builtin(line);
+        }
+    }
+
+    free(line);
+    fclose(fp);
 
     return 0;
 }

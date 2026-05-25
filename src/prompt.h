@@ -6,10 +6,10 @@
 #include <string.h>
 
 #define GREEN "\001\033[32m\002"
-#define GOLD "\e[38;2;211;175;55m"
-#define RESET "\001\033[0m\002"
-#define START_BOLD "\033[1m"
-#define END_BOLD "\033[0m"
+#define GOLD       "\001\033[38;2;211;175;55m\002"
+#define RESET      "\001\033[0m\002"
+#define START_BOLD "\001\033[1m\002"
+#define END_BOLD   "\001\033[0m\002"
 
 char *prompt(void) {
     static char prompt[1024];
