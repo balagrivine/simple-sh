@@ -10,6 +10,7 @@
 #include <readline/history.h>
 
 #include "builtin.h"
+#include "completion.h"
 #include "prompt.h"
 
 int tokenize(char *command, char **tokens);
@@ -31,7 +32,7 @@ main(int argc, char *argv[])
     }
 
     register_interrupt_signal_handler();
-    rl_bind_key('\t', rl_complete);
+    rl_attempted_completion_function = simple_sh_completion;
 
     while (1){
 
