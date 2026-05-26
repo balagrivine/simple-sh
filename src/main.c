@@ -12,6 +12,7 @@
 #include "builtin.h"
 #include "completion.h"
 #include "prompt.h"
+#include "redirect.h"
 
 int tokenize(char *command, char **tokens);
 void register_interrupt_signal_handler(void);
@@ -89,6 +90,10 @@ void execute_readline_command(char *command){
         // signals, the child process will inherit that and cause issues later on.
         signal(SIGINT, SIG_DFL);
 
+        if (setup_redirect(command) < 0) {
+            exit(1);
+        }
+
         char *tokens[100];
 
         int num_tokens = tokenize(command, tokens);
@@ -100,6 +105,7 @@ void execute_readline_command(char *command){
         if (ret == -1) {
             perror(tokens[0]);
         }
+
         exit(ret);
     } else {
         waitpid(rc, NULL, 0);

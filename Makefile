@@ -6,7 +6,7 @@ CFLAGS  = -std=c99 -Wall -Wextra -isysroot $(SDK) -I$(READLINE_PREFIX)/include -
 LDFLAGS = -L$(READLINE_PREFIX)/lib -L$(SDK)/usr/lib -lreadline
 
 TARGET  = shell
-SRC     = src/main.c src/builtin.c src/completion.c
+SRC     = src/main.c src/builtin.c src/completion.c src/redirect.c
 
 $(TARGET): $(SRC)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@
