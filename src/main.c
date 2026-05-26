@@ -18,6 +18,7 @@ void register_interrupt_signal_handler(void);
 void sigint_handler(int sig);
 void execute_readline_command(char *command);
 static sigjmp_buf sigint_env;
+static volatile sig_atomic_t readline_active = 0;
 int initialize_shell();
 
 int
@@ -37,10 +38,19 @@ main(int argc, char *argv[])
     while (1){
 
         if (sigsetjmp(sigint_env, 1) != 0) {
-            write(STDOUT_FILENO, "\n", 1);
+            // Reap any zombie left by a Ctrl-C interrupted child.
+            waitpid(-1, NULL, WNOHANG);
+            if (readline_active) {
+                rl_reset_after_signal();
+                rl_crlf();
+            } else {
+                write(STDOUT_FILENO, "\n", 1);
+            }
         }
 
+        readline_active = 1;
         char *command = readline(prompt());
+        readline_active = 0;
         if (command == NULL) {
             break;
         }
@@ -92,7 +102,7 @@ void execute_readline_command(char *command){
         }
         exit(ret);
     } else {
-        wait(NULL);
+        waitpid(rc, NULL, 0);
     }
 }
 
@@ -159,10 +169,16 @@ register_interrupt_signal_handler(void){
 void
 sigint_handler(int sig){
     (void)sig;
-    rl_free_line_state();
+    if (readline_active) {
+        rl_free_line_state();
+        rl_reset_line_state();
+    }
     siglongjmp(sigint_env, 1);
 }
 
 int initialize_shell(void){
-    return setenv("CLICOLOR", "1", 0);
+    setenv("CLICOLOR", "1", 0);
+    setenv("INPUTRC", "simpleshrc", 0);
+
+    return 0;
 }
