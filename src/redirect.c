@@ -40,6 +40,11 @@ setup_redirect(char *command){
         redirect++;
     }
 
+    if (*redirect == '\0') {
+        fprintf(stderr, "simple-sh: parse error\n");
+        return -1;
+    }
+
     int fd = open(redirect, flags, 0644);
     if (fd == -1) {
         perror("open");
