@@ -13,14 +13,17 @@
 #include "completion.h"
 #include "prompt.h"
 #include "redirect.h"
+#include "pipe.h"
 
 int tokenize(char *command, char **tokens);
 void register_interrupt_signal_handler(void);
 void sigint_handler(int sig);
-void execute_readline_command(char *command);
 static sigjmp_buf sigint_env;
 static volatile sig_atomic_t readline_active = 0;
 int initialize_shell();
+int split_pipe_subcommands(char *command, char **subcommands);
+void handle_command(char *command);
+void execute_readline_command(char *command);
 
 int
 main(int argc, char *argv[])
@@ -65,7 +68,7 @@ main(int argc, char *argv[])
             add_history(command);
         }
 
-        execute_readline_command(command);
+        handle_command(command);
 
         free(command);
     }
@@ -109,6 +112,66 @@ void execute_readline_command(char *command){
         exit(ret);
     } else {
         waitpid(rc, NULL, 0);
+    }
+}
+
+void handle_command(char *command){
+    char *subcommands[128];
+
+    int num_cmds = split_pipe_subcommands(command, subcommands);
+    if (num_cmds == 0){
+        execute_readline_command(command);
+        return;
+    }
+
+    int prev_fd = -1;
+    pid_t pids[128];
+
+    for (int i = 0; i < num_cmds; i++) {
+        int pipefd[2] = {-1, -1};
+        int is_last = (i == num_cmds - 1);
+
+        if (!is_last && setup_pipe(pipefd) < 0) {
+            exit(1);
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            exit(1);
+        } else if (pid == 0) {
+            signal(SIGINT, SIG_DFL);
+
+            if (prev_fd != -1) {
+                dup2(prev_fd, STDIN_FILENO);
+                close(prev_fd);
+            }
+            if (!is_last) {
+                dup2(pipefd[1], STDOUT_FILENO);
+                close(pipefd[0]);
+                close(pipefd[1]);
+            }
+
+            if (setup_redirect(subcommands[i]) < 0) exit(1);
+            char *tokens[100];
+            int n = tokenize(subcommands[i], tokens);
+            if (n == 0) exit(0);
+
+            execvp(tokens[0], tokens);
+            perror(tokens[0]);
+            exit(1);
+        }
+
+        pids[i] = pid;
+        if (prev_fd != -1) close(prev_fd);
+        if (!is_last) {
+            close(pipefd[1]);
+            prev_fd = pipefd[0];
+        }
+    }
+
+    for (int i = 0; i < num_cmds; i++) {
+        waitpid(pids[i], NULL, 0);
     }
 }
 
@@ -157,6 +220,37 @@ tokenize(char *command, char **tokens)
     tokens[i] = NULL;
 
     return i;
+}
+
+int
+split_pipe_subcommands(char *command, char **subcommands){
+    int count = 0;
+    char *p = command;
+
+    if (strchr(command, '|') == NULL){
+        return 0;
+    }
+
+    subcommands[count++] = p;
+
+    while (*p) {
+        if (*p == '|') {
+            *p = '\0';
+            p++;
+
+            while (isspace((unsigned char)*p)) {
+                p++;
+            }
+
+            subcommands[count++] = p;
+        } else {
+            p++;
+        }
+    }
+
+    subcommands[count] = NULL;
+
+    return count;
 }
 
 //register_interrupt_signal_handler registers the desired signal handler
